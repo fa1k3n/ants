@@ -16,6 +16,9 @@ from ants import worker
 import unittest
 import time
 
+#
+# These tests are probably not the greatest due to timing usages
+#
 class TestStringMethods(unittest.TestCase):
 
 	# Should be called atleast onces
@@ -25,12 +28,15 @@ class TestStringMethods(unittest.TestCase):
 	    def counter():
 	    	nonlocal i
 	    	i += 1
-	    counter.start()
+	   
+	    c = counter.start()
 	    time.sleep(0.1) # Sleep a little while
-	    counter.stop()
+	    c.stop()
+	    value = i
+	    time.sleep(0.1) # Sleep a little while more to make sure we are stopped
 
-	    self.assertTrue(i > 0)
-
+	    self.assertTrue(i - value < 2)   # Might be some diff fue to stopping times
+	    
 	# Setup a worker triggering every second
 	def test_start_with_a_trigger(self):
 		i = 0
@@ -38,28 +44,50 @@ class TestStringMethods(unittest.TestCase):
 		def counter():
 			nonlocal i
 			i += 1
-		counter.start(lambda : time.sleep(0.2))
+		c = counter.start(lambda : time.sleep(0.4))
 		time.sleep(0.3)
-		counter.stop()
+		c.stop()
 		self.assertEqual(1, i)
 
-	# Setup a worker with an init function
-	def test_worker_with_init(self):
+	# Setup a worker with an starting function
+	def test_worker_with_starting(self):
 		i = 0
 		@worker
 		def counter():
 			nonlocal i
 			i += 1
 
-		@counter.init
-		def counter_init():
+		@counter.starting
+		def counter_starting():
 			nonlocal i
 			i = 5
 
-		counter.start(lambda : time.sleep(0.2))
+		counter.start(lambda : time.sleep(0.4))
 		time.sleep(0.3)
 		counter.stop()
 		self.assertEqual(6, i)
+
+	# Setup a worker with an stopping function
+	def test_worker_with_stopping(self):
+		i = 0
+		@worker
+		def counter():
+			nonlocal i
+			i += 1
+
+		@counter.stopping
+		def counter_stopping():
+			nonlocal i
+			i = 0
+
+		c = counter.start()
+		time.sleep(0.1)
+		val = i
+		c.stop()
+		time.sleep(0.1).  # Wait a while for the worker to stop
+		self.assertTrue(val > 0)
+		self.assertEqual(i, 0)
+
 
 
 if __name__ == '__main__':

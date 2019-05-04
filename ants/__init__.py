@@ -18,22 +18,32 @@ def worker(func):
 
     class WorkerThread(StoppableThread):
         
-        def init(self, fun):
-            self._init = fun
+        def __init__(self):
+            self._starting = lambda: True
+            self._stopping = lambda: True
+            self._worker = func
+            super().__init__()
+
+        def starting(self, fun):
+            self._starting = fun
     
+        def stopping(self, fun):
+            self._stopping = fun
+
         def destroy(self):
             pass
 
         def start(self, trigger = lambda: True):
             self._trigger = trigger
-            if hasattr(self, '_init'):
-                self._init()
+            self._starting()
             super().start()
+            return self
 
         def run(self):
             while not self.stopped():
-                self._trigger()
-                func()
+                self._worker()        # Run the worker
+                self._trigger()       # Then run the trigger
+            self._stopping()         # Finally run stopping function
 
         def suspend(self):
             print("Suspend")
